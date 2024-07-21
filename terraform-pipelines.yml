@@ -1,0 +1,69 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  TF_VAR_azureSubscription: "******"
+  TF_VAR_azurerm_region: "*****"
+  TF_VAR_azurerm_resource_group: "********"
+  TF_VAR_azurerm_keyvault: "*****"
+  TF_VAR_azurerm_stgaccount: "******"
+  TF_VAR_azurerm_containername: "******"  
+
+jobs:
+- job: TerraformDeployment
+  displayName: 'Terraform Deployment'  # Make sure this display name is unique
+  steps:
+  
+  - task: AzureCLI@2
+    inputs:      
+      addToPath: true
+      azureSubscription: '$(TF_VAR_azureSubscription)'
+      scriptType: bash
+      addSpnToEnvironment: true # this will add the required credentials to env vars
+      useGlobalConfig: true
+      scriptLocation: inlineScript
+      inlineScript: |
+        echo "##vso[task.setvariable variable=ARM_TENANT_ID;]$tenantId"
+        echo "##vso[task.setvariable variable=ARM_CLIENT_ID;]$servicePrincipalId"
+        echo "##vso[task.setvariable variable=ARM_CLIENT_SECRET;]$servicePrincipalKey"
+        echo "##vso[task.setvariable variable=ARM_SUBSCRIPTION_ID]$(az account show --query id -o tsv)"
+  - script: |
+      # Install Terraform
+      curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+      echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+      sudo apt-get update && sudo apt-get install terraform
+    displayName: 'Install Terraform'
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+  - task: TerraformTaskV4@4
+    displayName: "Terraform Init"
+    inputs:
+      command: 'init'
+      workingDirectory: '$(System.DefaultWorkingDirectory)'     
+      backendType: 'azurerm'           
+      backendServiceArm: '$(TF_VAR_azureSubscription)'
+      backendAzureRmResourceGroupName: '$(TF_VAR_azurerm_resource_group)'
+      backendAzureRmStorageAccountName: '$(TF_VAR_azurerm_stgaccount)'      
+      backendAzureRmContainerName: '$(TF_VAR_azurerm_containername)'
+      backendAzureRmKey: 'terraform.tfstate'  
+
+  - task: TerraformTaskV4@4
+    displayName: Create Terraform Plan
+    inputs:
+      provider: 'azurerm'
+      command: 'plan'
+      commandOptions: '-out main.tfplan'
+      environmentServiceNameAzureRM: '$(TF_VAR_azureSubscription)'
+
+  # Only runs if the 'terraformPlan' task has detected changes in the state. 
+  - task: TerraformTaskV4@4
+    displayName: Apply Terraform Plan
+    condition: eq(variables['terraformPlan.changesPresent'], 'true')
+    inputs:
+      provider: 'azurerm'
+      command: 'apply'
+      commandOptions: 'main.tfplan -lock=false'
+      environmentServiceNameAzureRM: '$(TF_VAR_azureSubscription)'
