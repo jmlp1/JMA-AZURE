@@ -22,31 +22,31 @@ resource "azurerm_subnet" "subnet" {
 }
 
 resource "azurerm_network_interface" "nic" {
-  count                 = "${var.node_count}"
-  name                  = "vmnic-${format("%02d", count.index+1)}"  
-  location              = var.azurerm_region
+  count                 = var.node_count
+  name                  = "vm_nic-${count.index}"  
+  location              = azurerm_resource_group.arg.location
   resource_group_name   = azurerm_resource_group.arg.name
   
   ip_configuration {
-    name                          = "vmintip-${format("%02d", count.index+1)}"
+    name                          = "vmintip-${count.index}"
     subnet_id                     = "${azurerm_subnet.subnet.id}"
-    private_ip_address_allocation = "Dynamic"
+    private_ip_address_allocation = "Dynamic" # convert to variable
   }
 }
 
 resource "azurerm_virtual_machine" "vm" {
-  count = "${var.node_count}"
-  name                  = "vm-${format("%02d", count.index+1)}"
+  count                 = var.node_count
+  name                  = "VM-${count.index}"
   location              = var.azurerm_region
   resource_group_name   = azurerm_resource_group.arg.name
-  network_interface_ids = ["${element(azurerm_network_interface.nic.*.id,count.index)}"]
-  vm_size               = "Standard_DS1_v2"
+  network_interface_ids = [azurerm_network_interface.nic[count.index].id]
+  vm_size               = "Standard_DS1_v2" # convert to variable
 
   storage_os_disk {
-    name              = "OSvm-${format("%02d", count.index)}"
+    name              = "VMOsDisk-${count.index}"
     caching           = "ReadWrite"
     create_option     = "FromImage"  
-    managed_disk_type = "Standard_LRS"
+    managed_disk_type = "Standard_LRS" # convert to variable
   }
 
   storage_image_reference {
@@ -57,7 +57,7 @@ resource "azurerm_virtual_machine" "vm" {
   }
 
   os_profile {
-    computer_name  =  azurerm_virtual_machine.vm[count.index]
+    computer_name  =  "VM-${count.index}"
     admin_username = "adminuser"
   }
 
