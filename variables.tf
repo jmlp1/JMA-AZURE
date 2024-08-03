@@ -8,16 +8,6 @@ variable "azurerm_region" {
   type        = string
 }
 
-variable "azurerm_stgaccount" {
-  description = "The name of the strg account"
-  type        = string 
-}
-
-variable "azurerm_containername" {
-  description = "The name of the strg account"
-  type        = string 
-}
-
 variable "azurerm_keyvault" {
   description = "The name of the vault"
   type        = string
@@ -38,4 +28,12 @@ variable "os" {
   })
 } 
 
+variable "azurerm_stgaccount" {
+  description = "The name of the strg account"
+  type        = string 
+}
 
+variable "azurerm_containername" {
+  description = "The name of the strg account"
+  type        = string 
+}
