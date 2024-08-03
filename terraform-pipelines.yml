@@ -5,18 +5,17 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  TF_VAR_azureSubscription: "******"
-  TF_VAR_azurerm_region: "*****"
-  TF_VAR_azurerm_resource_group: "********"
-  TF_VAR_azurerm_keyvault: "*****"
-  TF_VAR_azurerm_stgaccount: "******"
-  TF_VAR_azurerm_containername: "******"  
+  TF_VAR_azureSubscription: "*******"
+  TF_VAR_azurerm_region: "*********"
+  TF_VAR_azurerm_resource_group: "**********"
+  TF_VAR_azurerm_keyvault: "*********"
+  TF_VAR_azurerm_stgaccount: "**************"
+  TF_VAR_azurerm_containername: "*************"  
 
 jobs:
 - job: TerraformDeployment
   displayName: 'Terraform Deployment'  # Make sure this display name is unique
   steps:
-  
   - task: AzureCLI@2
     inputs:      
       addToPath: true
@@ -55,15 +54,16 @@ jobs:
     inputs:
       provider: 'azurerm'
       command: 'plan'
-      commandOptions: '-out main.tfplan'
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+      commandOptions: '-lock=false -out=main.tfplan'
       environmentServiceNameAzureRM: '$(TF_VAR_azureSubscription)'
-
+  
   # Only runs if the 'terraformPlan' task has detected changes in the state. 
   - task: TerraformTaskV4@4
     displayName: Apply Terraform Plan
-    condition: eq(variables['terraformPlan.changesPresent'], 'true')
     inputs:
       provider: 'azurerm'
       command: 'apply'
-      commandOptions: 'main.tfplan -lock=false'
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+      commandOptions: 'main.tfplan'
       environmentServiceNameAzureRM: '$(TF_VAR_azureSubscription)'
